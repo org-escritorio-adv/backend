@@ -1,23 +1,14 @@
-from fastapi import Depends, FastAPI
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from fastapi import FastAPI
 
-from app.db.session import get_db
+from app.routers import process_router, health_check
 
-app = FastAPI()
+app = FastAPI(title="Escritorio Adv")
 
+'''Rota para Processos'''
+app.include_router(process_router.router)
+
+app.include_router(health_check.health)
 
 @app.get("/")
 def read_root():
-    return {"message": "Test backend"}
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.get("/health/db")
-def health_db(db: Session = Depends(get_db)):
-    db.execute(text("SELECT 1"))
-    return {"status": "ok", "database": "connected"}
+    return {"message": "Rota Base da API"}
