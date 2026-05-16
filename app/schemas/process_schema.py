@@ -1,6 +1,5 @@
 from datetime import date
-from typing import List, Optional
-
+from typing import List
 from pydantic import BaseModel, Field
 
 class Movement(BaseModel):
@@ -18,6 +17,11 @@ class Process(BaseModel):
     status: str
     favorite: bool = False
     movements: List[Movement] = []
+
+    # TO DO: revisar a modelagem
+    client_id: int      # Aponta para o ID do Cliente
+    tribunal_id: int     # Aponta para o ID do Tribunal
+    advogado_id: int     # Aponta para o ID do Usuário (Advogado)
 
 class ProcessCreate(BaseModel):
     number: str
