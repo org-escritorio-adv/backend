@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.db.session import get_db
 
-health = APIRouter()
+from src.database import get_db
 
-@health.get("/health")
+router = APIRouter(tags=["health"])
+
+
+@router.get("/health")
 def check_health():
     return {"status": "ok"}
 
-@health.get("/health/db")
+
+@router.get("/health/db")
 def health_db(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))

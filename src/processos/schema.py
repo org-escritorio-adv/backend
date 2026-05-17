@@ -1,11 +1,10 @@
 from datetime import date
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 
-class Movement(BaseModel):
-    date: date
-    description: str
+from src.movimentacoes.schema import Movement
+
 
 class Process(BaseModel):
     id: int
@@ -18,6 +17,10 @@ class Process(BaseModel):
     status: str
     favorite: bool = False
     movements: List[Movement] = []
+    client_id: int
+    tribunal_id: int
+    advogado_id: int
+
 
 class ProcessCreate(BaseModel):
     number: str
@@ -28,8 +31,6 @@ class ProcessCreate(BaseModel):
 
 
 class ProcessUpdate(BaseModel):
-    """PATCH: só os enviados são aplicados."""
-
     number: str | None = None
     court: str | None = None
     parts: str | None = None
