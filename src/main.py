@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+import src.models  # — registra todos os models no Base.metadata
+from src.database import Base, engine
 from src.clientes.router import router as clientes_router
 from src.jusbrasil.router import router as jusbrasil_router
 from src.leads.router import router as leads_router
@@ -9,6 +11,8 @@ from src.processos.router import router as processos_router
 from src.shared.health import router as health_router
 from src.tarefas.router import router as tarefas_router
 from src.usuarios.router import router as usuarios_router
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Escritorio Adv")
 
