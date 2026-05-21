@@ -3,7 +3,7 @@ from fastapi import FastAPI
 import src.models  # — registra todos os models no Base.metadata
 from src.database import Base, engine
 from src.clientes.router import router as clientes_router
-from src.jusbrasil.router import router as jusbrasil_router
+from src.jusbrasil.router import router as datajud_router
 from src.leads.router import router as leads_router
 from src.movimentacoes.router import router as movimentacoes_router
 from src.prazos.router import router as prazos_router
@@ -23,7 +23,7 @@ app.include_router(usuarios_router)
 app.include_router(prazos_router)
 app.include_router(tarefas_router)
 app.include_router(movimentacoes_router)
-app.include_router(jusbrasil_router)
+app.include_router(datajud_router)
 app.include_router(health_router)
 
 
