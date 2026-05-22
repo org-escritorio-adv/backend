@@ -9,7 +9,7 @@ class Processo(Base):
     __tablename__ = "processos"
 
     id = Column(Integer, primary_key=True, index=True)
-    numero = Column(String(25), unique=True, nullable=False, index=True)
+    numero_cnj = Column(String(25), unique=True, nullable=False, index=True)
     tribunal = Column(String)
     partes = Column(Text)
     data_abertura = Column(DateTime)
