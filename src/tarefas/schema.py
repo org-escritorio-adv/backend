@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TarefaBase(BaseModel):
@@ -22,6 +22,8 @@ class TarefaUpdate(BaseModel):
 
 
 class Tarefa(TarefaBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: date
-    updated_at: date
+    updated_at: date | None = None

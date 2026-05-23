@@ -1,38 +1,40 @@
-from typing import Any
+from sqlalchemy.orm import Session
 
-_db: list[dict[str, Any]] = [
-    {
-        "id": 1,
-        "criado_em": "2026-04-01",
-        "atualizado_em": "2026-04-05",
-        "nome": "Ana Costa",
-        "email": "ana.costa@email.com",
-        "telefone": "(11) 91234-5678",
-        "mensagem": "Gostaria de uma consulta sobre direito trabalhista.",
-        "status": "Novo",
-    },
-    {
-        "id": 2,
-        "criado_em": "2026-04-08",
-        "atualizado_em": "2026-04-10",
-        "nome": "Carlos Mendes",
-        "email": "carlos.mendes@empresa.com",
-        "telefone": "(31) 99876-5432",
-        "mensagem": "Preciso de assessoria para abertura de empresa.",
-        "status": "Em contato",
-    },
-    {
-        "id": 3,
-        "criado_em": "2026-04-12",
-        "atualizado_em": "2026-04-12",
-        "nome": "Fernanda Lima",
-        "email": "fernanda.lima@email.com",
-        "telefone": "(47) 98888-7777",
-        "mensagem": "Tenho interesse em ação de indenização por danos morais.",
-        "status": "Convertido",
-    },
-]
+from src.leads.model import LeadSite
+from src.leads.schema import LeadSiteCreate, LeadSiteUpdate
 
 
-def get_store() -> list[dict[str, Any]]:
-    return _db
+def listar(db: Session) -> list[LeadSite]:
+    return db.query(LeadSite).order_by(LeadSite.id).all()
+
+
+def buscar_por_id(db: Session, lead_id: int) -> LeadSite | None:
+    return db.query(LeadSite).filter(LeadSite.id == lead_id).first()
+
+
+def criar(db: Session, dados: LeadSiteCreate) -> LeadSite:
+    lead = LeadSite(**dados.model_dump())
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    return lead
+
+
+def atualizar(db: Session, lead_id: int, dados: LeadSiteUpdate) -> LeadSite | None:
+    lead = buscar_por_id(db, lead_id)
+    if not lead:
+        return None
+    for campo, valor in dados.model_dump(exclude_unset=True).items():
+        setattr(lead, campo, valor)
+    db.commit()
+    db.refresh(lead)
+    return lead
+
+
+def remover(db: Session, lead_id: int) -> bool:
+    lead = buscar_por_id(db, lead_id)
+    if not lead:
+        return False
+    db.delete(lead)
+    db.commit()
+    return True

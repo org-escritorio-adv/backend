@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class UsuarioBase(BaseModel):
@@ -20,6 +20,8 @@ class UsuarioUpdate(BaseModel):
 
 
 class Usuario(UsuarioBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
-    created_at: date
-    updated_at: date
+    created_at: datetime
+    updated_at: datetime | None = None

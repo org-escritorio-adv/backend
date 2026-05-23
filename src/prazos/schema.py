@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PrazoBase(BaseModel):
@@ -21,6 +21,8 @@ class PrazoUpdate(BaseModel):
 
 
 class Prazo(PrazoBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: date
-    updated_at: date
+    updated_at: date | None = Field(default=None, validation_alias="created_at")

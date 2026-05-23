@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LeadSiteBase(BaseModel):
@@ -20,6 +20,8 @@ class LeadSiteUpdate(BaseModel):
 
 
 class LeadSite(LeadSiteBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
-    criado_em: date
-    atualizado_em: date
+    criado_em: datetime
+    atualizado_em: datetime | None = None

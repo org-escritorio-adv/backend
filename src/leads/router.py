@@ -1,4 +1,4 @@
-from src.leads.repository import get_store
+from src.leads import repository
 from src.leads.schema import LeadSite, LeadSiteCreate, LeadSiteUpdate
 from src.shared.crud_factory import create_crud_router
 
@@ -8,8 +8,10 @@ router = create_crud_router(
     model=LeadSite,
     model_create=LeadSiteCreate,
     model_update=LeadSiteUpdate,
-    db_mock=get_store(),
+    listar=repository.listar,
+    buscar_por_id=repository.buscar_por_id,
+    criar=repository.criar,
+    atualizar=repository.atualizar,
+    remover=repository.remover,
     resource_name="Lead",
-    created_field="criado_em",
-    updated_field="atualizado_em",
 )

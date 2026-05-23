@@ -1,73 +1,109 @@
-from typing import Any
+from datetime import date, datetime
 
-_db: list[dict[str, Any]] = [
-    {
-        "id": 1,
-        "created_at": "2026-04-10",
-        "updated_at": "2026-04-10",
-        "number": "0001234-56.2023.8.26.0000",
-        "court": "TJSP",
-        "parts": "João da Silva vs. Empresa Meta",
-        "start_date": "2023-05-15",
-        "status": "Em andamento",
-        "favorite": True,
-        "client_id": 1,
-        "tribunal_id": 1,
-        "advogado_id": 1,
-        "movements": [
-            {"date": "2023-05-15", "description": "Petição inicial distribuída"},
-            {"date": "2023-08-20", "description": "Audiência de conciliação designada"},
-        ],
-    },
-    {
-        "id": 2,
-        "created_at": "2026-04-11",
-        "updated_at": "2026-04-15",
-        "number": "0009876-54.2024.8.21.0001",
-        "court": "TJRS",
-        "parts": "Tech Solutions Ltda vs. Fornecedor XYZ",
-        "start_date": "2024-02-01",
-        "status": "Aguardando sentença",
-        "favorite": False,
-        "client_id": 2,
-        "tribunal_id": 2,
-        "advogado_id": 1,
-        "movements": [
-            {"date": "2024-02-01", "description": "Distribuição da ação"},
-        ],
-    },
-    {
-        "id": 3,
-        "created_at": "2026-04-14",
-        "updated_at": "2026-04-16",
-        "number": "0005555-11.2025.8.26.0100",
-        "court": "STJ",
-        "parts": "Maria Oliveira Silva vs. Operadora de Saúde",
-        "start_date": "2025-01-10",
-        "status": "Arquivado",
-        "favorite": False,
-        "client_id": 1,
-        "tribunal_id": 3,
-        "advogado_id": 2,
-        "movements": [],
-    },
-]
+from sqlalchemy.orm import Session, joinedload
+
+from src.movimentacoes.schema import Movement
+from src.processos.model import Processo
+from src.processos.schema import Process, ProcessCreate, ProcessUpdate
 
 
-def get_store() -> list[dict[str, Any]]:
-    return _db
+def _as_date(value: datetime | date | None) -> date:
+    if value is None:
+        return date.today()
+    if isinstance(value, datetime):
+        return value.date()
+    return value
 
 
-def get_by_id(process_id: int) -> dict[str, Any] | None:
-    for item in _db:
-        if item["id"] == process_id:
-            return item
-    return None
+def _to_process(processo: Processo) -> Process:
+    movements = [
+        Movement(date=_as_date(m.data), description=m.descricao)
+        for m in processo.movimentacoes
+    ]
+    return Process(
+        id=processo.id,
+        created_at=_as_date(processo.created_at),
+        updated_at=_as_date(processo.updated_at or processo.created_at),
+        number=processo.numero_cnj,
+        court=processo.tribunal or "",
+        parts=processo.partes or "",
+        start_date=_as_date(processo.data_abertura),
+        status=processo.status or "",
+        favorite=bool(processo.favorito),
+        movements=movements,
+        client_id=processo.cliente_id or 0,
+        tribunal_id=0,
+        advogado_id=processo.advogado_id or 0,
+    )
 
 
-def toggle_favorite(process_id: int) -> dict[str, Any] | None:
-    item = get_by_id(process_id)
-    if item is None:
+def _query(db: Session):
+    return db.query(Processo).options(joinedload(Processo.movimentacoes))
+
+
+def listar(db: Session) -> list[Process]:
+    return [_to_process(p) for p in _query(db).order_by(Processo.id).all()]
+
+
+def buscar_por_id(db: Session, processo_id: int) -> Process | None:
+    processo = _query(db).filter(Processo.id == processo_id).first()
+    return _to_process(processo) if processo else None
+
+
+def _get_orm(db: Session, processo_id: int) -> Processo | None:
+    return _query(db).filter(Processo.id == processo_id).first()
+
+
+def criar(db: Session, dados: ProcessCreate) -> Process:
+    processo = Processo(
+        numero_cnj=dados.number,
+        tribunal=dados.court,
+        partes=dados.parts,
+        data_abertura=dados.start_date,
+        status=dados.status,
+    )
+    db.add(processo)
+    db.commit()
+    db.refresh(processo)
+    return _to_process(processo)
+
+
+def atualizar(db: Session, processo_id: int, dados: ProcessUpdate) -> Process | None:
+    processo = _get_orm(db, processo_id)
+    if not processo:
         return None
-    item["favorite"] = not item["favorite"]
-    return item
+
+    campos = dados.model_dump(exclude_unset=True, exclude={"movements"})
+    mapeamento = {
+        "number": "numero_cnj",
+        "court": "tribunal",
+        "parts": "partes",
+        "start_date": "data_abertura",
+        "status": "status",
+        "favorite": "favorito",
+    }
+    for campo_api, valor in campos.items():
+        setattr(processo, mapeamento.get(campo_api, campo_api), valor)
+
+    db.commit()
+    db.refresh(processo)
+    return _to_process(processo)
+
+
+def remover(db: Session, processo_id: int) -> bool:
+    processo = db.query(Processo).filter(Processo.id == processo_id).first()
+    if not processo:
+        return False
+    db.delete(processo)
+    db.commit()
+    return True
+
+
+def toggle_favorito(db: Session, processo_id: int) -> Process | None:
+    processo = _get_orm(db, processo_id)
+    if not processo:
+        return None
+    processo.favorito = not processo.favorito
+    db.commit()
+    db.refresh(processo)
+    return _to_process(processo)
