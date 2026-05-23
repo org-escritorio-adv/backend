@@ -1,9 +1,11 @@
-from datetime import date
-from typing import Any, Dict, List, Type
+from collections.abc import Callable
+from typing import Any, List, Type
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from src.database import get_db
 
 def create_crud_router(
     prefix: str,
@@ -11,56 +13,42 @@ def create_crud_router(
     model: Type[BaseModel],
     model_create: Type[BaseModel],
     model_update: Type[BaseModel],
-    db_mock: List[Dict[str, Any]],
+    listar: Callable[[Session], list[Any]],
+    buscar_por_id: Callable[[Session, int], Any | None],
+    criar: Callable[[Session, BaseModel], Any],
+    atualizar: Callable[[Session, int, BaseModel], Any | None],
+    remover: Callable[[Session, int], bool],
     resource_name: str = "Recurso",
-    created_field: str = "created_at",
-    updated_field: str = "updated_at",
 ) -> APIRouter:
+    
     router = APIRouter(prefix=prefix, tags=tags)
 
     @router.get("/", response_model=List[model])
-    def list_items():
-        return db_mock
+    def list_items(db: Session = Depends(get_db)):
+        return listar(db)
 
     @router.get("/{item_id}", response_model=model)
-    def get_item(item_id: int):
-        for item in db_mock:
-            if item["id"] == item_id:
-                return item
-        raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+    def get_item(item_id: int, db: Session = Depends(get_db)):
+        item = buscar_por_id(db, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+        return item
 
-    @router.post("/", response_model=model)
-    def create_item(item: model_create):
-        new_id = max((i["id"] for i in db_mock), default=0) + 1
-        today = date.today()
-        new_item = {
-            "id": new_id,
-            created_field: today,
-            updated_field: today,
-            **item.model_dump(),
-        }
-        db_mock.append(new_item)
-        return new_item
+    @router.post("/", response_model=model, status_code=201)
+    def create_item(body: model_create, db: Session = Depends(get_db)):
+        return criar(db, body)
 
     @router.patch("/{item_id}", response_model=model)
-    def update_item(item_id: int, body: model_update):
-        for item in db_mock:
-            if item["id"] != item_id:
-                continue
-            updates = body.model_dump(exclude_unset=True)
-            if not updates:
-                return item
-            item.update(updates)
-            item[updated_field] = date.today()
-            return item
-        raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+    def update_item(item_id: int, body: model_update, db: Session = Depends(get_db)):
+        item = atualizar(db, item_id, body)
+        if not item:
+            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+        return item
 
     @router.delete("/{item_id}", status_code=204)
-    def delete_item(item_id: int):
-        for i, item in enumerate(db_mock):
-            if item["id"] == item_id:
-                db_mock.pop(i)
-                return
-        raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+    def delete_item(item_id: int, db: Session = Depends(get_db)):
+        sucesso = remover(db, item_id)
+        if not sucesso:
+            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
 
     return router

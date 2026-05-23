@@ -28,6 +28,7 @@ MANIFEST
 
 *.manifest
 *.spec
+.cursorrules
 
 # Installer logs
 pip-log.txt

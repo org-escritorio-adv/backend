@@ -1,35 +1,37 @@
-from typing import Any
+from sqlalchemy.orm import Session
 
-_db: list[dict[str, Any]] = [
-    {
-        "id": 1,
-        "created_at": "2026-03-01",
-        "updated_at": "2026-03-15",
-        "nome_razao_social": "Maria Oliveira Silva",
-        "cpf_cnpj": "123.456.789-00",
-        "telefone": "(11) 98765-4321",
-        "email": "maria.oliveira@email.com",
-    },
-    {
-        "id": 2,
-        "created_at": "2026-03-10",
-        "updated_at": "2026-04-02",
-        "nome_razao_social": "Tech Solutions Ltda",
-        "cpf_cnpj": "12.345.678/0001-90",
-        "telefone": "(21) 3333-4444",
-        "email": "contato@techsolutions.com.br",
-    },
-    {
-        "id": 3,
-        "created_at": "2026-04-05",
-        "updated_at": "2026-04-05",
-        "nome_razao_social": "João Pedro Santos",
-        "cpf_cnpj": "987.654.321-00",
-        "telefone": None,
-        "email": "joao.santos@email.com",
-    },
-]
+from src.clientes.model import Cliente
+from src.clientes.schema import ClientCreate, ClientUpdate
 
 
-def get_store() -> list[dict[str, Any]]:
-    return _db
+def listar(db: Session) -> list[Cliente]:
+    return db.query(Cliente).order_by(Cliente.id).all()
+
+
+def buscar_por_id(db: Session, cliente_id: int) -> Cliente | None:
+    return db.query(Cliente).filter(Cliente.id == cliente_id).first()
+
+
+def buscar_por_cpf(db: Session, cpf_cnpj: str) -> Cliente | None:
+    return db.query(Cliente).filter(Cliente.cpf_cnpj == cpf_cnpj).first()
+
+
+def criar(db: Session, dados: ClientCreate) -> Cliente:
+    cliente = Cliente(**dados.model_dump())
+    db.add(cliente)
+    db.commit()
+    db.refresh(cliente)
+    return cliente
+
+
+def atualizar(db: Session, cliente: Cliente, dados: ClientUpdate) -> Cliente:
+    for campo, valor in dados.model_dump(exclude_unset=True).items():
+        setattr(cliente, campo, valor)
+    db.commit()
+    db.refresh(cliente)
+    return cliente
+
+
+def remover(db: Session, cliente: Cliente) -> None:
+    db.delete(cliente)
+    db.commit()
