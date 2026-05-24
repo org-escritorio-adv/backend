@@ -1,5 +1,5 @@
 from src.shared.crud_factory import create_crud_router
-from src.usuarios.repository import get_store
+from src.usuarios import repository
 from src.usuarios.schema import Usuario, UsuarioCreate, UsuarioUpdate
 
 router = create_crud_router(
@@ -8,6 +8,10 @@ router = create_crud_router(
     model=Usuario,
     model_create=UsuarioCreate,
     model_update=UsuarioUpdate,
-    db_mock=get_store(),
+    listar=repository.listar,
+    buscar_por_id=repository.buscar_por_id,
+    criar=repository.criar,
+    atualizar=repository.atualizar,
+    remover=repository.remover,
     resource_name="Usuário",
 )

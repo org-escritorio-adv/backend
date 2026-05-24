@@ -1,5 +1,17 @@
-from fastapi import APIRouter
+from src.shared.crud_factory import create_crud_router
+from src.movimentacoes import repository
+from src.movimentacoes.schema import Movimentacao, MovimentacaoCreate, MovimentacaoUpdate
 
-router = APIRouter(prefix="/movimentacoes", tags=["movimentacoes"])
-
-# To do: Endpoints de movimentações 
+router = create_crud_router(
+    prefix="/movimentacoes",
+    tags=["movimentacoes"],
+    model=Movimentacao,
+    model_create=MovimentacaoCreate,
+    model_update=MovimentacaoUpdate,
+    listar=repository.listar,
+    buscar_por_id=repository.buscar_por_id,
+    criar=repository.criar,
+    atualizar=repository.atualizar,
+    remover=repository.remover,
+    resource_name="Movimentação",
+)

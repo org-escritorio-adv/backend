@@ -1,5 +1,5 @@
 from src.shared.crud_factory import create_crud_router
-from src.tarefas.repository import get_store
+from src.tarefas import repository
 from src.tarefas.schema import Tarefa, TarefaCreate, TarefaUpdate
 
 router = create_crud_router(
@@ -8,6 +8,10 @@ router = create_crud_router(
     model=Tarefa,
     model_create=TarefaCreate,
     model_update=TarefaUpdate,
-    db_mock=get_store(),
+    listar=repository.listar,
+    buscar_por_id=repository.buscar_por_id,
+    criar=repository.criar,
+    atualizar=repository.atualizar,
+    remover=repository.remover,
     resource_name="Tarefa",
 )

@@ -1,6 +1,5 @@
-from datetime import date
-
-from pydantic import BaseModel
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 
 
 class TarefaBase(BaseModel):
@@ -19,9 +18,13 @@ class TarefaUpdate(BaseModel):
     titulo: str | None = None
     descricao: str | None = None
     status: str | None = None
+    processo_id: int | None = None
+    responsavel_id: int | None = None
 
 
 class Tarefa(TarefaBase):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
-    created_at: date
-    updated_at: date
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
