@@ -10,7 +10,9 @@ class TestLeadsSchema(unittest.TestCase):
             "email": "joao@email.com",
             "telefone": "11999999999",
             "mensagem": "Quero marcar uma consulta",
-            "status": "Novo"
+            "status": "Novo",
+            "criado_em": "2026-04-01",
+            "atualizado_em": "2026-04-01",
         }
         lead = LeadSite.model_validate(mock_data)
         self.assertEqual(lead.nome, "João da Silva")
