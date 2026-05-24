@@ -1,8 +1,24 @@
-from datetime import date
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict
 
-from pydantic import BaseModel
+
+class MovimentacaoBase(BaseModel):
+    data: datetime
+    descricao: str
+    processo_id: int
 
 
-class Movement(BaseModel):
-    date: date
-    description: str
+class MovimentacaoCreate(MovimentacaoBase):
+    pass
+
+
+class MovimentacaoUpdate(BaseModel):
+    data: datetime | None = None
+    descricao: str | None = None
+    processo_id: int | None = None
+
+
+class Movimentacao(MovimentacaoBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int

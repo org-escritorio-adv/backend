@@ -1,4 +1,4 @@
-from src.prazos.repository import get_store
+from src.prazos import repository
 from src.prazos.schema import Prazo, PrazoCreate, PrazoUpdate
 from src.shared.crud_factory import create_crud_router
 
@@ -8,6 +8,10 @@ router = create_crud_router(
     model=Prazo,
     model_create=PrazoCreate,
     model_update=PrazoUpdate,
-    db_mock=get_store(),
+    listar=repository.listar,
+    buscar_por_id=repository.buscar_por_id,
+    criar=repository.criar,
+    atualizar=repository.atualizar,
+    remover=repository.remover,
     resource_name="Prazo",
 )

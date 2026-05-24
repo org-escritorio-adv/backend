@@ -1,29 +1,44 @@
 import unittest
+from datetime import datetime
+from src.processos.schema import Processo, ProcessoCreate
 
-from src.processos.repository import get_by_id, toggle_favorite
-from src.processos.schema import Process
 
+class TestProcessosSchema(unittest.TestCase):
+    def test_schema_valida_campos_obrigatorios(self):
+        payload = ProcessoCreate(
+            numero_cnj="0001234-56.2023.8.26.0000",
+            tribunal="TJSP",
+            partes="João da Silva vs. Empresa Meta",
+            data_abertura=datetime(2023, 5, 15),
+            status="Em andamento",
+            favorito=True,
+            cliente_id=1,
+            advogado_id=1
+        )
+        self.assertEqual(payload.numero_cnj, "0001234-56.2023.8.26.0000")
+        self.assertEqual(payload.tribunal, "TJSP")
 
-class TestProcessosRepository(unittest.TestCase):
-    def test_get_by_id_existente(self):
-        item = get_by_id(1)
-        self.assertIsNotNone(item)
-        self.assertEqual(item["number"], "0001234-56.2023.8.26.0000")
+    def test_schema_from_orm(self):
+        class MockProcessoORM:
+            def __init__(self):
+                self.id = 1
+                self.numero_cnj = "0001234-56.2023.8.26.0000"
+                self.tribunal = "TJSP"
+                self.partes = "João vs. Maria"
+                self.data_abertura = datetime(2023, 5, 15)
+                self.status = "ativo"
+                self.favorito = False
+                self.cliente_id = 1
+                self.advogado_id = 2
+                self.created_at = datetime(2026, 4, 10)
+                self.updated_at = datetime(2026, 4, 10)
+                self.movimentacoes = []
 
-    def test_get_by_id_inexistente(self):
-        self.assertIsNone(get_by_id(9999))
-
-    def test_toggle_favorite(self):
-        antes = get_by_id(2)["favorite"]
-        toggle_favorite(2)
-        depois = get_by_id(2)["favorite"]
-        self.assertNotEqual(antes, depois)
-        toggle_favorite(2)
-
-    def test_schema_valida_mock(self):
-        item = get_by_id(1)
-        processo = Process.model_validate(item)
+        orm = MockProcessoORM()
+        processo = Processo.model_validate(orm)
         self.assertEqual(processo.id, 1)
+        self.assertEqual(processo.numero_cnj, "0001234-56.2023.8.26.0000")
+        self.assertFalse(processo.favorito)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,20 @@
 import unittest
-
-from src.leads.repository import get_store
 from src.leads.schema import LeadSite
 
 
-class TestLeadsRepository(unittest.TestCase):
+class TestLeadsSchema(unittest.TestCase):
     def test_schema_valida_mock(self):
-        LeadSite.model_validate(get_store()[0])
+        mock_data = {
+            "id": 1,
+            "nome": "João da Silva",
+            "email": "joao@email.com",
+            "telefone": "11999999999",
+            "mensagem": "Quero marcar uma consulta",
+            "status": "Novo"
+        }
+        lead = LeadSite.model_validate(mock_data)
+        self.assertEqual(lead.nome, "João da Silva")
+        self.assertEqual(lead.status, "Novo")
 
 
 if __name__ == "__main__":

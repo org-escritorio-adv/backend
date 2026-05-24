@@ -1,40 +1,38 @@
-from datetime import date
-from typing import List
-
-from pydantic import BaseModel, Field
-
-from src.movimentacoes.schema import Movement
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field
+from src.movimentacoes.schema import Movimentacao
 
 
-class Process(BaseModel):
-    id: int
-    created_at: date
-    updated_at: date
-    number: str = Field(..., description="Formato CNJ com 20 digitos")
-    court: str
-    parts: str
-    start_date: date
-    status: str
-    favorite: bool = False
-    movements: List[Movement] = []
-    client_id: int
-    tribunal_id: int
-    advogado_id: int
+class ProcessoBase(BaseModel):
+    numero_cnj: str = Field(..., description="Número único CNJ de 20 dígitos (ex: 0001234-56.2023.8.26.0000)")
+    tribunal: str
+    partes: str | None = None
+    data_abertura: datetime | None = None
+    status: str = "ativo"
+    favorito: bool = False
+    cliente_id: int | None = None
+    advogado_id: int | None = None
 
 
-class ProcessCreate(BaseModel):
-    number: str
-    court: str
-    parts: str
-    start_date: date
-    status: str
+class ProcessoCreate(ProcessoBase):
+    pass
 
 
-class ProcessUpdate(BaseModel):
-    number: str | None = None
-    court: str | None = None
-    parts: str | None = None
-    start_date: date | None = None
+class ProcessoUpdate(BaseModel):
+    numero_cnj: str | None = None
+    tribunal: str | None = None
+    partes: str | None = None
+    data_abertura: datetime | None = None
     status: str | None = None
-    favorite: bool | None = None
-    movements: List[Movement] | None = None
+    favorito: bool | None = None
+    cliente_id: int | None = None
+    advogado_id: int | None = None
+
+
+class Processo(ProcessoBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    movimentacoes: list[Movimentacao] = []
