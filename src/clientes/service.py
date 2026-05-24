@@ -38,8 +38,9 @@ def atualizar_cliente(db: Session, cliente_id: int, dados: ClientUpdate):
         raise HTTPException(status_code=409, detail="CPF/CNPJ já cadastrado")
 
 
-def remover_cliente(db: Session, cliente_id: int) -> None:
+def remover_cliente(db: Session, cliente_id: int) -> bool:
     cliente = repository.buscar_por_id(db, cliente_id)
     if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado!")
+        return False
     repository.remover(db, cliente)
+    return True
