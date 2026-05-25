@@ -14,4 +14,9 @@ router = create_crud_router(
     atualizar=repository.atualizar,
     remover=repository.remover,
     resource_name="Prazo",
+    roles_listar=["admin", "advogado", "estagiario"],
+    roles_buscar=["admin", "advogado", "estagiario"],
+    roles_criar=["admin", "advogado"],
+    roles_atualizar=["admin", "advogado"],
+    roles_remover=["admin"],
 )

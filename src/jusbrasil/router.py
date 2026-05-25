@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from src.database import get_db
+from src.keycloak_auth import require_roles
 from src.jusbrasil import repository
 from src.jusbrasil.schema import (
     DataJudConsultaRequest,
@@ -25,7 +26,7 @@ def _hits_para_processos(hits: list) -> list[DataJudProcesso]:
     return result
 
 
-@router.post("/consultar", response_model=DataJudConsultaResponse)
+@router.post("/consultar", response_model=DataJudConsultaResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
 def consultar_processo(body: DataJudConsultaRequest):
     """Consulta DataJud e retorna payload bruto — não persiste no banco."""
     try:
@@ -44,7 +45,7 @@ def consultar_processo(body: DataJudConsultaRequest):
     )
 
 
-@router.post("/importar", response_model=DataJudImportarResponse)
+@router.post("/importar", response_model=DataJudImportarResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
 def importar_processo(body: DataJudImportarRequest, db: Session = Depends(get_db)):
     """Consulta DataJud e persiste o processo + movimentações no banco."""
     try:
@@ -83,7 +84,7 @@ def importar_processo(body: DataJudImportarRequest, db: Session = Depends(get_db
     )
 
 
-@router.get("/buscar/{tribunal}", response_model=DataJudConsultaResponse)
+@router.get("/buscar/{tribunal}", response_model=DataJudConsultaResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
 def buscar_processos(
     tribunal: str,
     numero_processo: str | None = Query(default=None, description="Número CNJ (20 dígitos)"),
@@ -108,7 +109,7 @@ def buscar_processos(
     )
 
 
-@router.get("/listar/{tribunal}", response_model=DataJudConsultaResponse)
+@router.get("/listar/{tribunal}", response_model=DataJudConsultaResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
 def listar_processos(
     tribunal: str,
     size: int = Query(default=10, ge=1, le=100),
