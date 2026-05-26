@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.keycloak_auth import require_roles
-from src.jusbrasil import repository
-from src.jusbrasil.schema import (
+from src.apiJud import repository
+from src.apiJud.schema import (
     DataJudConsultaRequest,
     DataJudConsultaResponse,
     DataJudImportarRequest,
