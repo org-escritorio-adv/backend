@@ -14,4 +14,9 @@ router = create_crud_router(
     criar=service.criar_cliente,
     atualizar=service.atualizar_cliente,
     remover=service.remover_cliente,
+    roles_listar=["admin", "advogado"],
+    roles_buscar=["admin", "advogado"],
+    roles_criar=["admin", "advogado"],
+    roles_atualizar=["admin", "advogado"],
+    roles_remover=["admin"],
 )
