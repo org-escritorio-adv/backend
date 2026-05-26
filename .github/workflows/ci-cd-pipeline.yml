@@ -29,16 +29,30 @@ jobs:
   linter:
     needs: tests
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Lint Code Base
+      - name: Lint specific file
         uses: github/super-linter@v4
         env:
-          VALIDATE_ALL_CODEBASE: false
+          VALIDATE_ALL_CODEBASE: true
           DEFAULT_BRANCH: "main"
+
+          #FILTER_REGEX_INCLUDE: ^src/main.py$
+          #STRIP_DEFAULT_WORKSPACE_FOR_REGEX: true
+
+          CREATE_LOG_FILE: true
+          LOG_FILE: report-linter.txt
+
           DISABLE_ERRORS: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload linter report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-linter
+          path: report-linter.txt
