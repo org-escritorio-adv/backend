@@ -1,13 +1,12 @@
+import json
 from datetime import datetime
 
 import httpx
 from sqlalchemy.orm import Session
 
+from src.config import DATAJUD_API_KEY, DATAJUD_BASE_URL
 from src.movimentacoes.model import Movimentacao
 from src.processos.model import Processo
-
-DATAJUD_BASE_URL = "https://api-publica.datajud.cnj.jus.br"
-DATAJUD_API_KEY = "cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=="
 
 _HEADERS = {
     "Authorization": f"APIKey {DATAJUD_API_KEY}",
@@ -65,7 +64,12 @@ def buscar_por_filtro(
     oab: str | None = None,
     size: int = 10,
 ) -> dict:
-    """Busca por número de processo, CPF de parte ou número OAB do advogado."""
+    """Busca por número de processo, CPF de parte ou número OAB do advogado.
+
+    AVISO: partes.cpfCnpj e partes.advogados.numeroOAB são raramente preenchidos
+    pelos tribunais no DataJud. Buscas por CPF ou OAB costumam retornar vazio
+    mesmo quando o processo existe — isso é uma limitação da fonte de dados.
+    """
     if not any([numero_processo, cpf, oab]):
         raise ValueError("Informe ao menos um filtro: numero_processo, cpf ou oab.")
 
@@ -76,8 +80,10 @@ def buscar_por_filtro(
     if numero_processo:
         clauses.append({"match": {"numeroProcesso": numero_processo}})
     if cpf:
+        # campo raramente preenchido pelos tribunais — resultado pode ser vazio
         clauses.append({"match": {"partes.cpfCnpj": cpf}})
     if oab:
+        # campo raramente preenchido pelos tribunais — resultado pode ser vazio
         clauses.append({"match": {"partes.advogados.numeroOAB": oab}})
 
     body = {
@@ -91,7 +97,7 @@ def buscar_por_filtro(
         return r.json()
 
 
-def listar_processos(tribunal: str, size: int = 10, search_after: list | None = None) -> dict:
+def buscar_recentes(tribunal: str, size: int = 10, search_after: list | None = None) -> dict:
     alias = normalizar_tribunal(tribunal)
     url = f"{DATAJUD_BASE_URL}/{alias}/_search"
     body: dict = {
@@ -133,10 +139,11 @@ def _parse_data_hora_movimento(valor: str | None) -> datetime | None:
 
 def _source_para_processo(source: dict, cliente_id: int | None, advogado_id: int | None) -> Processo:
     """Mapeia _source do ElasticSearch → model Processo."""
+    partes_raw = source.get("partes", [])
     return Processo(
         numero_cnj=source.get("numeroProcesso", ""),
         tribunal=source.get("tribunal"),
-        partes=None,                              # DataJud não retorna partes
+        partes=json.dumps(partes_raw, ensure_ascii=False) if partes_raw else None,
         data_abertura=_parse_data_ajuizamento(source.get("dataAjuizamento")),
         status="ativo",                           # DataJud não tem campo de status
         favorito=False,

@@ -27,6 +27,7 @@ class DataJudProcesso(BaseModel):
     classe: dict[str, Any] | None = None
     assuntos: list[dict[str, Any]] = []
     orgaoJulgador: dict[str, Any] | None = None
+    partes: list[dict[str, Any]] = []
     movimentos: list[dict[str, Any]] = []
     nivelSigilo: int | None = None
 

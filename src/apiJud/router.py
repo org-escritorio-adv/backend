@@ -88,8 +88,8 @@ def importar_processo(body: DataJudImportarRequest, db: Session = Depends(get_db
 def buscar_processos(
     tribunal: str,
     numero_processo: str | None = Query(default=None, description="Número CNJ (20 dígitos)"),
-    cpf: str | None = Query(default=None, description="CPF de uma das partes"),
-    oab: str | None = Query(default=None, description="Número OAB do advogado"),
+    cpf: str | None = Query(default=None, description="CPF de uma das partes (atenção: campo raramente preenchido no DataJud — resultado pode ser vazio)"),
+    oab: str | None = Query(default=None, description="Número OAB do advogado (atenção: campo raramente preenchido no DataJud — resultado pode ser vazio)"),
     size: int = Query(default=10, ge=1, le=100),
 ):
     """Busca processos por número, CPF ou OAB. Informe ao menos um filtro."""
@@ -109,14 +109,14 @@ def buscar_processos(
     )
 
 
-@router.get("/listar/{tribunal}", response_model=DataJudConsultaResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
-def listar_processos(
+@router.get("/recentes/{tribunal}", response_model=DataJudConsultaResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
+def buscar_recentes(
     tribunal: str,
     size: int = Query(default=10, ge=1, le=100),
 ):
-    """Lista processos recentes do tribunal — não persiste no banco."""
+    """Retorna processos recentes direto do DataJud — não persiste no banco."""
     try:
-        raw = repository.listar_processos(tribunal, size=size)
+        raw = repository.buscar_recentes(tribunal, size=size)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
