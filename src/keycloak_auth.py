@@ -9,6 +9,8 @@ import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from jose import jwk
+from jose.utils import base64url_decode
 
 from src.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_REALM, KEYCLOAK_SERVER_URL
 
@@ -74,7 +76,13 @@ async def get_current_user(
         rsa_key = None
         for key in jwks.get("keys", []):
             if key["kid"] == kid:
-                rsa_key = key
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"],
+                }
                 break
 
         if rsa_key is None:
@@ -90,8 +98,8 @@ async def get_current_user(
             algorithms=["RS256"],
             options={
                 "verify_iss": False,
-                "verify_aud": False
-            }
+                "verify_aud": False,
+            },
         )
 
     except JWTError as exc:
