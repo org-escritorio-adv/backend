@@ -21,6 +21,6 @@ class UsuarioUpdate(BaseModel):
 class Usuario(UsuarioBase):
     model_config = ConfigDict(from_attributes=True)
     
-    id: str
+    id: int
     created_at: datetime | None = None
     updated_at: datetime | None = None
