@@ -9,8 +9,6 @@ import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from jose import jwk
-from jose.utils import base64url_decode
 
 from src.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_REALM, KEYCLOAK_SERVER_URL
 
@@ -32,15 +30,33 @@ def _issuer_url() -> str:
     return f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}"
 
 
-async def _get_jwks() -> dict:
-    """Busca as chaves JWKS do Keycloak (com cache em memória)."""
+async def _get_jwks(force_refresh: bool = False) -> dict:
+    """Busca as chaves JWKS do Keycloak (com cache em memória).
+    
+    Se force_refresh=True, ignora o cache e busca chaves novas.
+    Isso é necessário quando o Keycloak é reiniciado e gera novas chaves.
+    """
     global _jwks_cache
-    if _jwks_cache is None:
+    if _jwks_cache is None or force_refresh:
         async with httpx.AsyncClient() as client:
             resp = await client.get(_jwks_url())
             resp.raise_for_status()
             _jwks_cache = resp.json()
     return _jwks_cache
+
+
+def _find_rsa_key(jwks: dict, kid: str) -> dict | None:
+    """Procura a chave RSA no JWKS pelo kid do token."""
+    for key in jwks.get("keys", []):
+        if key["kid"] == kid:
+            return {
+                "kty": key["kty"],
+                "kid": key["kid"],
+                "use": key["use"],
+                "n": key["n"],
+                "e": key["e"],
+            }
+    return None
 
 
 def _extract_realm_roles(token_payload: dict) -> list[str]:
@@ -67,23 +83,18 @@ async def get_current_user(
     token = credentials.credentials
 
     try:
-        jwks = await _get_jwks()
-        # Extrair o header do JWT para pegar o kid
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
 
-        # Encontrar a chave correspondente no JWKS
-        rsa_key = None
-        for key in jwks.get("keys", []):
-            if key["kid"] == kid:
-                rsa_key = {
-                    "kty": key["kty"],
-                    "kid": key["kid"],
-                    "use": key["use"],
-                    "n": key["n"],
-                    "e": key["e"],
-                }
-                break
+        # Tenta com o cache primeiro
+        jwks = await _get_jwks()
+        rsa_key = _find_rsa_key(jwks, kid)
+
+        # Se não achou, o Keycloak pode ter sido reiniciado e gerado novas chaves.
+        # Busca chaves frescas uma vez antes de desistir.
+        if rsa_key is None:
+            jwks = await _get_jwks(force_refresh=True)
+            rsa_key = _find_rsa_key(jwks, kid)
 
         if rsa_key is None:
             raise HTTPException(
