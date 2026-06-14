@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from src.clientes.model import Cliente
@@ -17,7 +18,10 @@ def buscar_por_cpf(db: Session, cpf_cnpj: str) -> Cliente | None:
 
 
 def criar(db: Session, dados: ClientCreate) -> Cliente:
-    cliente = Cliente(**dados.model_dump())
+    dados_dict = dados.model_dump()
+    if dados_dict.get("autorizacao_busca") and not dados_dict.get("data_autorizacao_busca"):
+        dados_dict["data_autorizacao_busca"] = datetime.utcnow()
+    cliente = Cliente(**dados_dict)
     db.add(cliente)
     db.commit()
     db.refresh(cliente)
@@ -25,7 +29,11 @@ def criar(db: Session, dados: ClientCreate) -> Cliente:
 
 
 def atualizar(db: Session, cliente: Cliente, dados: ClientUpdate) -> Cliente:
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
+    update_data = dados.model_dump(exclude_unset=True)
+    if update_data.get("autorizacao_busca") and not update_data.get("data_autorizacao_busca"):
+        update_data["data_autorizacao_busca"] = datetime.utcnow()
+    
+    for campo, valor in update_data.items():
         setattr(cliente, campo, valor)
     db.commit()
     db.refresh(cliente)
