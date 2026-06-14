@@ -17,9 +17,9 @@ def create_crud_router(
     model_update: Type[BaseModel],
     listar: Callable[[Session], list[Any]],
     buscar_por_id: Callable[[Session, int], Any | None],
-    criar: Callable[[Session, BaseModel], Any],
-    atualizar: Callable[[Session, int, BaseModel], Any | None],
-    remover: Callable[[Session, int], bool],
+    criar: Callable[[Session, BaseModel], Any] | None = None,
+    atualizar: Callable[[Session, int, BaseModel], Any | None] | None = None,
+    remover: Callable[[Session, int], bool] | None = None,
     resource_name: str = "Recurso",
     roles_listar: list[str] | None = None,
     roles_buscar: list[str] | None = None,
@@ -51,23 +51,26 @@ def create_crud_router(
         return item
 
     # ── POST / ───────────────────────────────────────────────────────────
-    @router.post("/", response_model=model, status_code=201, dependencies=_role_deps(roles_criar))
-    def create_item(body: model_create, db: Session = Depends(get_db)):
-        return criar(db, body)
+    if criar is not None:
+        @router.post("/", response_model=model, status_code=201, dependencies=_role_deps(roles_criar))
+        def create_item(body: model_create, db: Session = Depends(get_db)):
+            return criar(db, body)
 
     # ── PATCH /{id} ──────────────────────────────────────────────────────
-    @router.patch("/{item_id}", response_model=model, dependencies=_role_deps(roles_atualizar))
-    def update_item(item_id: int, body: model_update, db: Session = Depends(get_db)):
-        item = atualizar(db, item_id, body)
-        if not item:
-            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
-        return item
+    if atualizar is not None:
+        @router.patch("/{item_id}", response_model=model, dependencies=_role_deps(roles_atualizar))
+        def update_item(item_id: int, body: model_update, db: Session = Depends(get_db)):
+            item = atualizar(db, item_id, body)
+            if not item:
+                raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+            return item
 
     # ── DELETE /{id} ─────────────────────────────────────────────────────
-    @router.delete("/{item_id}", status_code=204, dependencies=_role_deps(roles_remover))
-    def delete_item(item_id: int, db: Session = Depends(get_db)):
-        sucesso = remover(db, item_id)
-        if not sucesso:
-            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+    if remover is not None:
+        @router.delete("/{item_id}", status_code=204, dependencies=_role_deps(roles_remover))
+        def delete_item(item_id: int, db: Session = Depends(get_db)):
+            sucesso = remover(db, item_id)
+            if not sucesso:
+                raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
 
     return router
