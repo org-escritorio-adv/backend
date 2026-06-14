@@ -1,10 +1,12 @@
 import requests
 from fastapi import HTTPException
 
-KEYCLOAK_URL = "http://keycloak:8080"
-REALM_NAME = "escritorio-realm"
-CLIENT_ID = "backend-client"
-CLIENT_SECRET = "gUHc20eRvmYZBKiMUSv0M5qa5A44x7ev"
+from src.config import (
+    KEYCLOAK_ADMIN_URL as KEYCLOAK_URL,
+    KEYCLOAK_ADMIN_REALM as REALM_NAME,
+    KEYCLOAK_ADMIN_CLIENT_ID as CLIENT_ID,
+    KEYCLOAK_ADMIN_CLIENT_SECRET as CLIENT_SECRET,
+)
 
 def obter_token_admin_backend():
     """Gera um token de acesso para o backend gerenciar o Keycloak"""
