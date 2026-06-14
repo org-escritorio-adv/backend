@@ -92,7 +92,8 @@ def exportar_pdf(processo_id: int, db: Session = Depends(get_db)):
     for mov in movimentacoes:
         pdf.cell(200, 10, txt=f"- {mov.data.strftime('%d/%m/%Y') if mov.data else ''}: {mov.descricao[:100]}", ln=True)
         
-    pdf_bytes = pdf.output(dest='S').encode('latin-1', errors='replace')
+    out = pdf.output()
+    pdf_bytes = bytes(out) if isinstance(out, bytearray) else out.encode('latin-1', errors='replace')
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
