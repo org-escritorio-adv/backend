@@ -44,7 +44,7 @@ def create_crud_router(
 
     # ── GET /{id} ────────────────────────────────────────────────────────
     @router.get("/{item_id}", response_model=model, dependencies=_role_deps(roles_buscar))
-    def get_item(item_id: int, db: Session = Depends(get_db)):
+    def get_item(item_id: str, db: Session = Depends(get_db)):
         item = buscar_por_id(db, item_id)
         if not item:
             raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
@@ -57,7 +57,7 @@ def create_crud_router(
 
     # ── PATCH /{id} ──────────────────────────────────────────────────────
     @router.patch("/{item_id}", response_model=model, dependencies=_role_deps(roles_atualizar))
-    def update_item(item_id: int, body: model_update, db: Session = Depends(get_db)):
+    def update_item(item_id: str, body: model_update, db: Session = Depends(get_db)):
         item = atualizar(db, item_id, body)
         if not item:
             raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
@@ -65,7 +65,7 @@ def create_crud_router(
 
     # ── DELETE /{id} ─────────────────────────────────────────────────────
     @router.delete("/{item_id}", status_code=204, dependencies=_role_deps(roles_remover))
-    def delete_item(item_id: int, db: Session = Depends(get_db)):
+    def delete_item(item_id: str, db: Session = Depends(get_db)):
         sucesso = remover(db, item_id)
         if not sucesso:
             raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")

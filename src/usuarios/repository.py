@@ -25,22 +25,70 @@ def obter_token_admin_backend():
     return response.json().get("access_token")
 
 def criar(db, dados):
-    # Dummy implementation so tests don't fail 500 when calling POST
-    return {
-        "id": "999",
-        "nome": dados.nome,
-        "email": dados.email,
-        "perfil": dados.perfil,
-        "status": "Ativo",
-        "avatar": "DU",
-        "telefone": "",
-        "permissoes": {}
+    token = obter_token_admin_backend()
+    url = f"{KEYCLOAK_URL}/admin/realms/{REALM_NAME}/users"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
     }
+    
+    payload = {
+        "username": dados.email,
+        "email": dados.email,
+        "firstName": dados.nome,
+        "enabled": True,
+        "emailVerified": True,
+        "credentials": [{
+            "type": "password",
+            "value": dados.senha,
+            "temporary": False
+        }]
+    }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    if response.status_code != 201:
+        raise HTTPException(status_code=400, detail=f"Erro ao criar usuário no Keycloak: {response.text}")
+    
+    # Extrai o UUID retornado pelo cabeçalho Location (ex: http://keycloak:8080/admin/realms/escritorio-adv/users/8372b83...)
+    location = response.headers.get("Location", "")
+    user_id = location.split("/")[-1] if location else None
+    
+    if not user_id:
+        raise HTTPException(status_code=500, detail="Keycloak não retornou o Location com o ID")
+        
+    return buscar_por_id(db, user_id)
 
 def atualizar(db, item_id, dados):
+    token = obter_token_admin_backend()
+    url = f"{KEYCLOAK_URL}/admin/realms/{REALM_NAME}/users/{item_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    # Update fields only if they are provided
+    payload = {}
+    if getattr(dados, "nome", None):
+        payload["firstName"] = dados.nome
+    if getattr(dados, "email", None):
+        payload["email"] = dados.email
+        
+    if payload:
+        response = requests.put(url, json=payload, headers=headers)
+        if response.status_code != 204:
+            raise HTTPException(status_code=400, detail=f"Erro ao atualizar usuário no Keycloak: {response.text}")
+            
     return buscar_por_id(db, item_id)
 
 def remover(db, item_id):
+    token = obter_token_admin_backend()
+    url = f"{KEYCLOAK_URL}/admin/realms/{REALM_NAME}/users/{item_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    response = requests.delete(url, headers=headers)
+    if response.status_code != 204:
+        raise HTTPException(status_code=400, detail=f"Erro ao deletar usuário no Keycloak: {response.text}")
+        
     return True
 
 def listar(db=None):
@@ -82,18 +130,6 @@ def buscar_por_id(db=None, item_id: str = None):
     """Busca um usuário específico por ID direto no Keycloak"""
     if not item_id:
         return None
-    
-    if str(item_id) == "999":
-        return {
-            "id": "999",
-            "nome": "Novo Usuario",
-            "email": "novo.user@escritorio.com",
-            "perfil": "advogado",
-            "status": "Ativo",
-            "avatar": "NO",
-            "telefone": "",
-            "permissoes": {}
-        }
         
     token = obter_token_admin_backend()
     url = f"{KEYCLOAK_URL}/admin/realms/{REALM_NAME}/users/{item_id}"
