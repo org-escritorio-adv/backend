@@ -11,8 +11,12 @@ from src.processos import repository
 from src.processos.schema import Processo, ProcessoCreate, ProcessoUpdate
 from src.shared.crud_factory import create_crud_router
 
-router = create_crud_router(
-    prefix="/processos",
+from fastapi import APIRouter
+
+router = APIRouter(prefix="/processos", tags=["processos"])
+
+crud_router = create_crud_router(
+    prefix="",
     tags=["processos"],
     model=Processo,
     model_create=ProcessoCreate,
@@ -99,3 +103,6 @@ def exportar_pdf(processo_id: int, db: Session = Depends(get_db)):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=processo_{processo.numero_cnj}.pdf"}
     )
+
+router.include_router(crud_router)
+
