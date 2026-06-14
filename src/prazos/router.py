@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import holidays
 from fastapi import APIRouter, Depends, HTTPException
 from src.prazos import repository
+from src.keycloak_auth import require_roles
 from src.prazos.schema import Prazo, PrazoCreate, PrazoUpdate
 from src.shared.crud_factory import create_crud_router
 
@@ -25,7 +26,12 @@ router = create_crud_router(
 )
 
 
-@router.get("/calcular-data", tags=["prazos"])
+custom_router = APIRouter(prefix="/prazos", tags=["prazos"])
+
+@custom_router.get(
+    "/calcular-data",
+    dependencies=[Depends(require_roles("admin", "advogado", "estagiario"))]
+)
 def calcular_data_prazo(data_inicial: str, dias_uteis: int):
     try:
         data_atual = datetime.fromisoformat(data_inicial)
@@ -40,3 +46,4 @@ def calcular_data_prazo(data_inicial: str, dias_uteis: int):
             dias_adicionados += 1
 
     return {"data_inicial": data_inicial, "dias_uteis": dias_uteis, "data_final": data_atual.isoformat()}
+
