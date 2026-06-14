@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import src.models  # — registra todos os models no Base.metadata
+from src.config import FRONTEND_URL
 from src.database import Base, engine
 from src.clientes.router import router as clientes_router
 from src.apiJud.router import router as datajud_router
@@ -20,7 +21,7 @@ app = FastAPI(title="Escritorio Adv")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
