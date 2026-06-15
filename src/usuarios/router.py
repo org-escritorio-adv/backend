@@ -16,4 +16,7 @@ router = create_crud_router(
     resource_name="Usuário",
     roles_listar=["admin"],
     roles_buscar=["admin"],
+    roles_criar=["admin"],
+    roles_atualizar=["admin"],
+    roles_remover=["admin"],
 )

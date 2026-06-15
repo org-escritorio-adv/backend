@@ -20,7 +20,11 @@ class UsuarioUpdate(BaseModel):
 
 class Usuario(UsuarioBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: str
+    status: str = "Ativo"
+    avatar: str = ""
+    telefone: str = ""
+    permissoes: dict = {}
     created_at: datetime | None = None
     updated_at: datetime | None = None

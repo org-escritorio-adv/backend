@@ -18,7 +18,7 @@ KEYCLOAK_ADMIN_CLIENT_SECRET = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "gUHc20
 DATAJUD_BASE_URL = os.getenv("DATAJUD_BASE_URL", "https://api-publica.datajud.cnj.jus.br")
 DATAJUD_API_KEY = os.getenv("DATAJUD_API_KEY", "")
 
-# Resend (e-mail transacional)
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
-RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "noreply@escritorio-adv.com.br")
+# Brevo (e-mail transacional)
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL", "noreply@escritorio-adv.com.br")
 
