@@ -16,10 +16,10 @@ def create_crud_router(
     model_create: Type[BaseModel],
     model_update: Type[BaseModel],
     listar: Callable[[Session], list[Any]],
-    buscar_por_id: Callable[[Session, int], Any | None],
+    buscar_por_id: Callable[[Session, str], Any | None],
     criar: Callable[[Session, BaseModel], Any],
-    atualizar: Callable[[Session, int, BaseModel], Any | None],
-    remover: Callable[[Session, int], bool],
+    atualizar: Callable[[Session, str, BaseModel], Any | None] | None,
+    remover: Callable[[Session, str], bool] | None,
     resource_name: str = "Recurso",
     roles_listar: list[str] | None = None,
     roles_buscar: list[str] | None = None,
@@ -32,7 +32,6 @@ def create_crud_router(
 
     # ── helpers ──────────────────────────────────────────────────────────
     def _role_deps(roles: list[str] | None) -> list:
-        """Retorna lista de dependencies para proteger a rota, se roles foram informadas."""
         if roles is None:
             return []
         return [Depends(require_roles(*roles))]
@@ -44,7 +43,7 @@ def create_crud_router(
 
     # ── GET /{id} ────────────────────────────────────────────────────────
     @router.get("/{item_id}", response_model=model, dependencies=_role_deps(roles_buscar))
-    def get_item(item_id: int, db: Session = Depends(get_db)):
+    def get_item(item_id: str, db: Session = Depends(get_db)):
         item = buscar_por_id(db, item_id)
         if not item:
             raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
@@ -55,19 +54,21 @@ def create_crud_router(
     def create_item(body: model_create, db: Session = Depends(get_db)):
         return criar(db, body)
 
-    # ── PATCH /{id} ──────────────────────────────────────────────────────
-    @router.patch("/{item_id}", response_model=model, dependencies=_role_deps(roles_atualizar))
-    def update_item(item_id: int, body: model_update, db: Session = Depends(get_db)):
-        item = atualizar(db, item_id, body)
-        if not item:
-            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
-        return item
+    # ── PATCH /{id} — só registrado quando atualizar é fornecido ─────────
+    if atualizar is not None:
+        @router.patch("/{item_id}", response_model=model, dependencies=_role_deps(roles_atualizar))
+        def update_item(item_id: str, body: model_update, db: Session = Depends(get_db)):
+            item = atualizar(db, item_id, body)
+            if not item:
+                raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+            return item
 
-    # ── DELETE /{id} ─────────────────────────────────────────────────────
-    @router.delete("/{item_id}", status_code=204, dependencies=_role_deps(roles_remover))
-    def delete_item(item_id: int, db: Session = Depends(get_db)):
-        sucesso = remover(db, item_id)
-        if not sucesso:
-            raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
+    # ── DELETE /{id} — só registrado quando remover é fornecido ──────────
+    if remover is not None:
+        @router.delete("/{item_id}", status_code=204, dependencies=_role_deps(roles_remover))
+        def delete_item(item_id: str, db: Session = Depends(get_db)):
+            sucesso = remover(db, item_id)
+            if not sucesso:
+                raise HTTPException(status_code=404, detail=f"{resource_name} não encontrado!")
 
     return router

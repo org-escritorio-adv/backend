@@ -9,6 +9,8 @@ class ClientBase(BaseModel):
     cpf_cnpj: str
     telefone: str | None = None
     email: str | None = None
+    autorizacao_busca: bool = False
+    data_autorizacao_busca: datetime | None = None
 
 
 class ClientCreate(ClientBase):
@@ -22,6 +24,8 @@ class ClientUpdate(BaseModel):
     cpf_cnpj: str | None = None
     telefone: str | None = None
     email: str | None = None
+    autorizacao_busca: bool | None = None
+    data_autorizacao_busca: datetime | None = None
 
 
 class Client(ClientBase):

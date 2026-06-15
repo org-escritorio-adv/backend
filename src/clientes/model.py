@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -15,5 +15,7 @@ class Cliente(Base):
     email = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    autorizacao_busca = Column(Boolean, default=False)
+    data_autorizacao_busca = Column(DateTime, nullable=True)
 
     processos = relationship("Processo", back_populates="cliente")
