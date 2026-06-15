@@ -1,11 +1,8 @@
-import logging
 import os
 import re
 import secrets
 import requests
 from collections import defaultdict
-
-logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,8 +16,8 @@ from src.config import KEYCLOAK_SERVER_URL, KEYCLOAK_REALM
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
-BREVO_FROM_EMAIL = os.getenv("BREVO_FROM_EMAIL", "noreply@escritorio-adv.com.br")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "noreply@escritorio-adv.com.br")
 KEYCLOAK_CLIENT_ID_ADMIN = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "backend-client")
 KEYCLOAK_CLIENT_SECRET_ADMIN = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET", "")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -87,21 +84,19 @@ def _enviar_email_reset(email: str, token: str):
       </p>
     </div>
     """
-    resp = requests.post(
-        "https://api.brevo.com/v3/smtp/email",
+    requests.post(
+        "https://api.resend.com/emails",
         headers={
-            "api-key": BREVO_API_KEY,
+            "Authorization": f"Bearer {RESEND_API_KEY}",
             "Content-Type": "application/json",
         },
         json={
-            "sender": {"name": "Barcelos & Takaki", "email": BREVO_FROM_EMAIL},
-            "to": [{"email": email}],
+            "from": RESEND_FROM_EMAIL,
+            "to": [email],
             "subject": "Código de redefinição de senha — Barcelos & Takaki",
-            "htmlContent": html,
+            "html": html,
         },
     )
-    if resp.status_code not in (200, 201):
-        logger.error("Brevo erro %s: %s", resp.status_code, resp.text)
 
 
 class ForgotPasswordBody(BaseModel):
