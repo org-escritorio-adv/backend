@@ -1,8 +1,10 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import src.models  # — registra todos os models no Base.metadata
-from src.database import Base, engine
+from src.database import Base, SessionLocal
 from src.clientes.router import router as clientes_router
 from src.apiJud.router import router as datajud_router
 from src.leads.router import router as leads_router
@@ -12,11 +14,21 @@ from src.processos.router import router as processos_router
 from src.shared.health import router as health_router
 from src.tarefas.router import router as tarefas_router
 from src.usuarios.router import router as usuarios_router
+from src.usuarios import repository as usuarios_repository
 from src.auth.router import router as auth_router
 
-Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Escritorio Adv")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db = SessionLocal()
+    try:
+        usuarios_repository.sincronizar_do_keycloak(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="Escritorio Adv", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
