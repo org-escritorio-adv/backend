@@ -2,9 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 import src.models  # — registra todos os models no Base.metadata
-from src.database import Base, SessionLocal
+from src.database import Base, SessionLocal, engine
 from src.clientes.router import router as clientes_router
 from src.apiJud.router import router as datajud_router
 from src.leads.router import router as leads_router
@@ -17,12 +18,22 @@ from src.usuarios.router import router as usuarios_router
 from src.usuarios import repository as usuarios_repository
 from src.auth.router import router as auth_router
 from src.notificacoes.router import router as notificacoes_router
+<<<<<<< Updated upstream
 from src.advogados.router import router as advogados_router
+=======
+from src.dashboard.router import router as dashboard_router
+>>>>>>> Stashed changes
 from src.scheduler import iniciar_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS termo_autorizacao_arquivo VARCHAR"
+        ))
+        conn.commit()
+
     db = SessionLocal()
     try:
         usuarios_repository.sincronizar_do_keycloak(db)
@@ -53,7 +64,11 @@ app.include_router(datajud_router)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(notificacoes_router)
+<<<<<<< Updated upstream
 app.include_router(advogados_router)
+=======
+app.include_router(dashboard_router)
+>>>>>>> Stashed changes
 
 
 @app.on_event("startup")

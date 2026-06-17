@@ -34,3 +34,13 @@ class Client(ClientBase):
     id: int
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    termo_autorizacao_arquivo: str | None = None
+
+
+class AutorizacaoResponse(BaseModel):
+    """Resposta do endpoint de registro de autorização."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    autorizacao_busca: bool
+    data_autorizacao_busca: datetime | None
+    termo_autorizacao_arquivo: str | None

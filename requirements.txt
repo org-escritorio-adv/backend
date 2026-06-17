@@ -12,3 +12,4 @@ requests
 fpdf2
 holidays
 apscheduler
+python-multipart
