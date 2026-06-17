@@ -27,6 +27,10 @@ class UsuarioMeUpdate(BaseModel):
     oab: str | None = None
 
 
+class PermissoesUpdate(BaseModel):
+    permissoes: dict[str, bool]
+
+
 class Usuario(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
