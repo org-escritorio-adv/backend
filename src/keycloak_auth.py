@@ -140,8 +140,8 @@ def require_roles(*allowed_roles: str):
     async def _check_roles(
         current_user: dict = Depends(get_current_user),
     ) -> dict:
-        user_roles = current_user.get("realm_roles", [])
-        if not any(role in user_roles for role in allowed_roles):
+        user_roles = [r.lower() for r in current_user.get("realm_roles", [])]
+        if not any(role.lower() in user_roles for role in allowed_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(

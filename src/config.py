@@ -6,6 +6,8 @@ if not DATABASE_URL:
         "DATABASE_URL is not set. "
         "Example: postgresql+psycopg2://user:pass@postgres:5432/dbname"
     )
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # Keycloak
 KEYCLOAK_SERVER_URL = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
@@ -21,4 +23,3 @@ DATAJUD_API_KEY = os.getenv("DATAJUD_API_KEY", "")
 # Resend (e-mail transacional)
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "noreply@escritorio-adv.com.br")
-
