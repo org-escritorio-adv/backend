@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from src import config
+from src.shared.permissoes import efetivas
 from src.usuarios.model import Usuario as UsuarioModel
 
 KEYCLOAK_URL = config.KEYCLOAK_SERVER_URL
@@ -60,7 +61,7 @@ def _to_dict(usuario: UsuarioModel) -> dict:
         "oab": usuario.oab,
         "status": "Ativo",
         "avatar": iniciais,
-        "permissoes": {},
+        "permissoes": efetivas(usuario.perfil, usuario.permissoes),
         "created_at": usuario.created_at,
         "updated_at": usuario.updated_at,
     }
@@ -185,7 +186,7 @@ def listar(db: Session):
             "oab": local.oab if local else None,
             "status": "Ativo" if kc_user.get("enabled") else "Inativo",
             "avatar": iniciais,
-            "permissoes": {},
+            "permissoes": efetivas(perfil, local.permissoes if local else None),
             "created_at": local.created_at if local else None,
             "updated_at": local.updated_at if local else None,
         })
@@ -318,6 +319,18 @@ def atualizar(db: Session, item_id: str, dados):
         except Exception:
             pass
 
+    return _to_dict(local)
+
+
+def atualizar_permissoes(db: Session, item_id: str, permissoes: dict[str, bool]):
+    """Salva o override individual de permissões de um usuário (admin)."""
+    local = db.query(UsuarioModel).filter(UsuarioModel.keycloak_id == item_id).first()
+    if not local:
+        return None
+
+    local.permissoes = permissoes
+    db.commit()
+    db.refresh(local)
     return _to_dict(local)
 
 

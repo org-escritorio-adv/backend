@@ -2,10 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.keycloak_auth import get_current_user
+from src.keycloak_auth import get_current_user, require_roles_or_permission
 from src.shared.crud_factory import create_crud_router
 from src.usuarios import repository
-from src.usuarios.schema import Usuario, UsuarioCreate, UsuarioMeUpdate, UsuarioUpdate
+from src.usuarios.schema import (
+    PermissoesUpdate,
+    Usuario,
+    UsuarioCreate,
+    UsuarioMeUpdate,
+    UsuarioUpdate,
+)
 
 # ── Rotas /me ─────────────────────────────────────────────────────────────────
 # Devem ser registradas ANTES do CRUD com /{item_id} para evitar conflito de rota.
@@ -50,6 +56,27 @@ async def update_me(
     return updated
 
 
+# ── Rota de permissões individuais ───────────────────────────────────────────
+
+_permissoes_router = APIRouter(prefix="/usuarios", tags=["usuarios"])
+
+
+@_permissoes_router.patch(
+    "/{item_id}/permissoes",
+    response_model=Usuario,
+    dependencies=[Depends(require_roles_or_permission(["admin"], "gerenciarUsuarios"))],
+)
+async def atualizar_permissoes(
+    item_id: str,
+    body: PermissoesUpdate,
+    db: Session = Depends(get_db),
+):
+    item = repository.atualizar_permissoes(db, item_id, body.permissoes)
+    if not item:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    return item
+
+
 # ── CRUD router ────────────────────────────────────────────────────────────────
 
 _crud_router = create_crud_router(
@@ -64,14 +91,15 @@ _crud_router = create_crud_router(
     atualizar=repository.atualizar,
     remover=repository.remover,
     resource_name="Usuário",
-    roles_listar=["admin"],
+    roles_listar=["admin", "advogado", "estagiario"],
     roles_buscar=["admin"],
     roles_criar=["admin"],
     roles_atualizar=["admin"],
     roles_remover=["admin"],
 )
 
-# Router combinado — /me antes de /{item_id}
+# Router combinado — /me e /{item_id}/permissoes antes de /{item_id}
 router = APIRouter()
 router.include_router(_me_router)
+router.include_router(_permissoes_router)
 router.include_router(_crud_router)
