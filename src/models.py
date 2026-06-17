@@ -8,3 +8,4 @@ from src.prazos.model import Prazo
 from src.leads.model import LeadSite
 from src.auth.model import PasswordResetToken  
 from src.notificacoes.model import Notificacao
+from src.advogados.model import Advogado

@@ -17,6 +17,7 @@ from src.usuarios.router import router as usuarios_router
 from src.usuarios import repository as usuarios_repository
 from src.auth.router import router as auth_router
 from src.notificacoes.router import router as notificacoes_router
+from src.advogados.router import router as advogados_router
 from src.scheduler import iniciar_scheduler
 
 
@@ -52,6 +53,7 @@ app.include_router(datajud_router)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(notificacoes_router)
+app.include_router(advogados_router)
 
 
 @app.on_event("startup")
