@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from sqlalchemy.orm import Session
@@ -150,11 +150,20 @@ def _parse_data_ajuizamento(valor: str | None) -> datetime | None:
 
 
 def _parse_data_hora_movimento(valor: str | None) -> datetime | None:
-    """DataJud envia "2022-04-14T18:31:19.000Z" (ISO 8601 UTC)."""
+    """DataJud envia "2022-04-14T18:31:19.000Z" (ISO 8601 UTC).
+
+    O banco guarda DateTime sem fuso (naive). Por isso convertemos para UTC e
+    removemos o tzinfo — assim a data fica no mesmo formato do que está salvo, e
+    a checagem de duplicata (data + descrição) funciona corretamente.
+    """
     if not valor:
         return None
     try:
-        return datetime.fromisoformat(valor.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(valor.replace("Z", "+00:00"))
+        # converte para UTC e remove o fuso, deixando "naive" como o banco espera
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
     except ValueError:
         return None
 
@@ -192,15 +201,19 @@ def _movimentos_para_movimentacoes(movimentos: list, processo_id: int) -> list[M
     return resultado
 
 
-def importar_processo(
+def sincronizar_processo(
     db: Session,
     source: dict,
     cliente_id: int | None = None,
     advogado_id: int | None = None,
-) -> Processo:
+) -> tuple[Processo, int]:
     """
     Recebe _source de um hit do DataJud, persiste em processos + movimentacoes.
     Se o processo já existe (numero_cnj), apenas adiciona movimentações novas.
+
+    Retorna uma tupla (processo, quantidade_de_movimentacoes_novas).
+    A contagem permite, por exemplo, gerar uma notificação só quando há
+    movimentação nova de verdade.
     """
     numero = source.get("numeroProcesso", "")
     processo = db.query(Processo).filter(Processo.numero_cnj == numero).first()
@@ -218,10 +231,26 @@ def importar_processo(
         (m.data, m.descricao)
         for m in db.query(Movimentacao).filter(Movimentacao.processo_id == processo.id).all()
     }
+    qtd_novas = 0
     for mov in novas_movs:
         if (mov.data, mov.descricao) not in existentes:
             db.add(mov)
+            qtd_novas += 1
 
     db.commit()
     db.refresh(processo)
+    return processo, qtd_novas
+
+
+def importar_processo(
+    db: Session,
+    source: dict,
+    cliente_id: int | None = None,
+    advogado_id: int | None = None,
+) -> Processo:
+    """
+    Mantida por compatibilidade com o código existente (importação manual).
+    Internamente usa sincronizar_processo e descarta a contagem.
+    """
+    processo, _ = sincronizar_processo(db, source, cliente_id, advogado_id)
     return processo

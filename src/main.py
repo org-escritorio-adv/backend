@@ -13,6 +13,8 @@ from src.shared.health import router as health_router
 from src.tarefas.router import router as tarefas_router
 from src.usuarios.router import router as usuarios_router
 from src.auth.router import router as auth_router
+from src.notificacoes.router import router as notificacoes_router
+from src.scheduler import iniciar_scheduler
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,6 +39,12 @@ app.include_router(movimentacoes_router)
 app.include_router(datajud_router)
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(notificacoes_router)
+
+
+@app.on_event("startup")
+def _iniciar_tarefas_agendadas():
+    iniciar_scheduler()
 
 
 @app.get("/")
