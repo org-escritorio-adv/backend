@@ -49,6 +49,13 @@ class DataJudImportarResponse(BaseModel):
     movimentacoes_importadas: int
 
 
+class DataJudSincronizarResponse(BaseModel):
+    total_processos: int
+    sincronizados_com_sucesso: int
+    falhas: int
+    ultima_sincronizacao: str
+
+
 # compatibilidade com imports antigos
 JusbrasilConsultaRequest = DataJudConsultaRequest
 JusbrasilConsultaResponse = DataJudConsultaResponse

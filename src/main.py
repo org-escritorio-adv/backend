@@ -16,6 +16,8 @@ from src.tarefas.router import router as tarefas_router
 from src.usuarios.router import router as usuarios_router
 from src.usuarios import repository as usuarios_repository
 from src.auth.router import router as auth_router
+from src.notificacoes.router import router as notificacoes_router
+from src.scheduler import iniciar_scheduler
 
 
 @asynccontextmanager
@@ -49,6 +51,12 @@ app.include_router(movimentacoes_router)
 app.include_router(datajud_router)
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(notificacoes_router)
+
+
+@app.on_event("startup")
+def _iniciar_tarefas_agendadas():
+    iniciar_scheduler()
 
 
 @app.get("/")

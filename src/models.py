@@ -7,3 +7,4 @@ from src.tarefas.model import Tarefa
 from src.prazos.model import Prazo  
 from src.leads.model import LeadSite
 from src.auth.model import PasswordResetToken  
+from src.notificacoes.model import Notificacao
