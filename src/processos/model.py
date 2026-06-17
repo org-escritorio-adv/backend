@@ -21,6 +21,8 @@ class Processo(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     cliente = relationship("Cliente", back_populates="processos")
-    movimentacoes = relationship("Movimentacao", back_populates="processo")
-    tarefas = relationship("Tarefa", back_populates="processo")
-    prazos = relationship("Prazo", back_populates="processo")
+    movimentacoes = relationship(
+        "Movimentacao", back_populates="processo", cascade="all, delete-orphan"
+    )
+    tarefas = relationship("Tarefa", back_populates="processo", cascade="all, delete-orphan")
+    prazos = relationship("Prazo", back_populates="processo", cascade="all, delete-orphan")

@@ -9,8 +9,11 @@ import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
-from src.config import KEYCLOAK_CLIENT_ID, KEYCLOAK_REALM, KEYCLOAK_SERVER_URL
+from src.config import KEYCLOAK_REALM, KEYCLOAK_SERVER_URL
+from src.database import get_db
+from src.shared.permissoes import efetivas
 
 # ── Esquema de segurança ────────────────────────────────────────────────────
 _bearer_scheme = HTTPBearer()
@@ -152,3 +155,56 @@ def require_roles(*allowed_roles: str):
         return current_user
 
     return _check_roles
+
+
+def _extrair_perfil(user_roles: list[str]) -> str:
+    if "admin" in user_roles:
+        return "admin"
+    if "advogado" in user_roles:
+        return "advogado"
+    if "estagiario" in user_roles:
+        return "estagiario"
+    return "advogado"
+
+
+def require_roles_or_permission(roles: list[str] | None, permissao: str | None):
+    """
+    Factory de dependency que libera acesso se o usuário tiver uma das
+    `roles` informadas OU se a permissão individual `permissao` estiver
+    ativa para ele (override salvo em Usuario.permissoes, ou padrão do
+    perfil quando não há override).
+
+    Usada para permitir que, por exemplo, um estagiário com a permissão
+    "criarProcessos" ativada manualmente consiga criar processos mesmo
+    sem ter a role "advogado"/"admin".
+    """
+
+    async def _check(
+        current_user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> dict:
+        user_roles = [r.lower() for r in current_user.get("realm_roles", [])]
+
+        if roles and any(role.lower() in user_roles for role in roles):
+            return current_user
+
+        if permissao:
+            # Import local para evitar ciclo de import no carregamento do módulo.
+            from src.usuarios.model import Usuario as UsuarioModel
+
+            local = (
+                db.query(UsuarioModel)
+                .filter(UsuarioModel.keycloak_id == current_user.get("sub"))
+                .first()
+            )
+            perfil = local.perfil if local else _extrair_perfil(user_roles)
+            overrides = local.permissoes if local else None
+            if efetivas(perfil, overrides).get(permissao):
+                return current_user
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado. Você não tem a role ou permissão necessária para esta ação.",
+        )
+
+    return _check

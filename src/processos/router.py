@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from src.database import get_db
-from src.keycloak_auth import require_roles
+from src.keycloak_auth import require_roles, require_roles_or_permission
 from src.processos import repository
 from src.processos.schema import Processo, ProcessoCreate, ProcessoUpdate
 from src.shared.crud_factory import create_crud_router
@@ -31,7 +31,13 @@ crud_router = create_crud_router(
     roles_buscar=["admin", "advogado", "estagiario"],
     roles_criar=["admin", "advogado"],
     roles_atualizar=["admin", "advogado"],
-    roles_remover=["admin"],
+    roles_remover=["admin", "advogado"],
+    # Permite que um estagiário com a permissão individual correspondente
+    # ativada no Painel de Permissões também tenha acesso, sem precisar
+    # ter a role "advogado"/"admin".
+    permissao_criar="criarProcessos",
+    permissao_atualizar="editarProcessos",
+    permissao_remover="excluirProcessos",
 )
 
 
@@ -51,7 +57,7 @@ def favoritar_processo(processo_id: int, db: Session = Depends(get_db)):
 
 @router.get(
     "/exportar-csv",
-    dependencies=[Depends(require_roles("admin", "advogado"))],
+    dependencies=[Depends(require_roles_or_permission(["admin", "advogado"], "exportarDados"))],
 )
 def exportar_csv(db: Session = Depends(get_db)):
     processos = repository.listar(db)
