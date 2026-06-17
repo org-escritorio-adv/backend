@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -10,10 +12,14 @@ from src.apiJud.schema import (
     DataJudImportarRequest,
     DataJudImportarResponse,
     DataJudProcesso,
+    DataJudSincronizarResponse,
 )
 from src.movimentacoes.model import Movimentacao
+from src.processos.model import Processo
 
 router = APIRouter(prefix="/datajud", tags=["datajud"])
+
+MENSAGEM_DATAJUD_INDISPONIVEL = "O DataJud está indisponível no momento. Tente novamente mais tarde."
 
 
 def _hits_para_processos(hits: list) -> list[DataJudProcesso]:
@@ -34,7 +40,8 @@ def consultar_processo(body: DataJudConsultaRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Erro DataJud: {e}")
+        print(f"Erro ao consultar DataJud: {e}")
+        raise HTTPException(status_code=502, detail=MENSAGEM_DATAJUD_INDISPONIVEL)
 
     hits = raw.get("hits", {})
     return DataJudConsultaResponse(
@@ -53,7 +60,8 @@ def importar_processo(body: DataJudImportarRequest, db: Session = Depends(get_db
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Erro DataJud: {e}")
+        print(f"Erro ao consultar DataJud: {e}")
+        raise HTTPException(status_code=502, detail=MENSAGEM_DATAJUD_INDISPONIVEL)
 
     hits = raw.get("hits", {}).get("hits", [])
     if not hits:
@@ -71,7 +79,8 @@ def importar_processo(body: DataJudImportarRequest, db: Session = Depends(get_db
             advogado_id=body.advogado_id,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar no banco: {e}")
+        print(f"Erro ao salvar processo importado: {e}")
+        raise HTTPException(status_code=500, detail="Erro ao salvar o processo no banco de dados.")
 
     total_movs = db.query(Movimentacao).filter(Movimentacao.processo_id == processo.id).count()
 
@@ -98,7 +107,8 @@ def buscar_processos(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Erro DataJud: {e}")
+        print(f"Erro ao buscar processos no DataJud: {e}")
+        raise HTTPException(status_code=502, detail=MENSAGEM_DATAJUD_INDISPONIVEL)
 
     hits = raw.get("hits", {})
     return DataJudConsultaResponse(
@@ -120,7 +130,8 @@ def buscar_recentes(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Erro DataJud: {e}")
+        print(f"Erro ao buscar processos recentes no DataJud: {e}")
+        raise HTTPException(status_code=502, detail=MENSAGEM_DATAJUD_INDISPONIVEL)
 
     hits = raw.get("hits", {})
     return DataJudConsultaResponse(
@@ -128,4 +139,60 @@ def buscar_recentes(
         tribunal=tribunal,
         total=hits.get("total", {}).get("value", 0),
         processos=_hits_para_processos(hits.get("hits", [])),
+    )
+
+
+@router.post(
+    "/sincronizar-todos",
+    response_model=DataJudSincronizarResponse,
+    dependencies=[Depends(require_roles("admin", "advogado"))],
+)
+def sincronizar_todos_processos(db: Session = Depends(get_db)):
+    """
+    Atualiza todos os processos cadastrados consultando o DataJud.
+    Se o DataJud estiver indisponível, aborta tudo e retorna 502 (US 2.1.1) —
+    o front-end mantém os dados antigos visíveis com a data da última
+    sincronização bem-sucedida.
+    """
+    processos = db.query(Processo).all()
+
+    sucesso = 0
+    falhas = 0
+
+    for processo in processos:
+        try:
+            raw = repository.consultar_por_numero(processo.numero_cnj, processo.tribunal)
+        except ValueError:
+            # Tribunal inválido só nesse processo — não é o DataJud que caiu,
+            # então não aborta a sincronização inteira.
+            falhas += 1
+            continue
+        except Exception as e:
+            # Falha de conectividade/disponibilidade do próprio DataJud.
+            print(f"Erro ao sincronizar com o DataJud: {e}")
+            raise HTTPException(status_code=502, detail=MENSAGEM_DATAJUD_INDISPONIVEL)
+
+        hits = raw.get("hits", {}).get("hits", [])
+        if not hits:
+            falhas += 1
+            continue
+
+        source = hits[0]["_source"]
+        try:
+            repository.importar_processo(
+                db,
+                source,
+                cliente_id=processo.cliente_id,
+                advogado_id=processo.advogado_id,
+            )
+            sucesso += 1
+        except Exception as e:
+            print(f"Erro ao salvar processo {processo.numero_cnj} durante sincronização: {e}")
+            falhas += 1
+
+    return DataJudSincronizarResponse(
+        total_processos=len(processos),
+        sincronizados_com_sucesso=sucesso,
+        falhas=falhas,
+        ultima_sincronizacao=datetime.now(timezone.utc).isoformat(),
     )

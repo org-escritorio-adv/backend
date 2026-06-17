@@ -1,4 +1,5 @@
 import json
+import time
 from datetime import datetime
 
 import httpx
@@ -47,14 +48,37 @@ def normalizar_tribunal(tribunal: str) -> str:
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 
-def consultar_por_numero(numero_processo: str, tribunal: str) -> dict:
+def consultar_por_numero(
+    numero_processo: str,
+    tribunal: str,
+    tentativas: int = 2,
+    timeout: float = 10,
+) -> dict:
+    """
+    Consulta um processo no DataJud.
+
+    Faz até `tentativas` chamadas com timeout curto (`timeout` segundos cada).
+    Isso evita que uma instabilidade pontual de rede (comum numa API pública
+    compartilhada) derrube a sincronização inteira — só desiste de verdade se
+    todas as tentativas falharem.
+    """
     alias = normalizar_tribunal(tribunal)
     url = f"{DATAJUD_BASE_URL}/{alias}/_search"
     body = {"query": {"match": {"numeroProcesso": numero_processo}}}
-    with httpx.Client(timeout=30) as client:
-        r = client.post(url, json=body, headers=_HEADERS)
-        r.raise_for_status()
-        return r.json()
+
+    ultimo_erro: Exception | None = None
+    for tentativa in range(1, tentativas + 1):
+        try:
+            with httpx.Client(timeout=timeout) as client:
+                r = client.post(url, json=body, headers=_HEADERS)
+                r.raise_for_status()
+                return r.json()
+        except Exception as e:
+            ultimo_erro = e
+            if tentativa < tentativas:
+                time.sleep(1)  # pequena pausa antes de tentar de novo
+
+    raise ultimo_erro
 
 
 def buscar_por_filtro(
