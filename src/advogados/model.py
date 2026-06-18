@@ -10,4 +10,6 @@ class Advogado(Base):
     especialidade = Column(String, nullable=True)
     oab = Column(String, nullable=True)
     email = Column(String, nullable=True)
+    telefone = Column(String, nullable=True)
+    foto_url = Column(String, nullable=True)
     bio = Column(Text, nullable=True)

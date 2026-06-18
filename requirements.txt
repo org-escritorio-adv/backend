@@ -13,3 +13,4 @@ fpdf2
 holidays
 apscheduler
 python-multipart
+boto3
