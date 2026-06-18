@@ -7,6 +7,8 @@ class AdvogadoBase(BaseModel):
     especialidade: Optional[str] = None
     oab: Optional[str] = None
     email: Optional[str] = None
+    telefone: Optional[str] = None
+    foto_url: Optional[str] = None
     bio: Optional[str] = None
 
 class AdvogadoCreate(AdvogadoBase):
