@@ -339,10 +339,41 @@ def remover(db: Session, item_id: str) -> bool:
     if not local:
         return False
 
-    # Remove do Keycloak primeiro. Se falhar, interrompe — não deletamos do banco
-    # um usuário que ainda tem acesso ativo no Keycloak.
+    from src.notificacoes.model import Notificacao
+    from src.processos.model import Processo
+    from src.tarefas.model import Tarefa
+
+    vinculos = []
+    if db.query(Processo.id).filter(Processo.advogado_id == local.id).first():
+        vinculos.append("processos")
+    if db.query(Tarefa.id).filter(Tarefa.responsavel_id == local.id).first():
+        vinculos.append("tarefas")
+
+    if vinculos:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Usuário não pode ser removido enquanto estiver vinculado a "
+                f"{', '.join(vinculos)}. Reatribua esses registros antes de remover."
+            ),
+        )
+
+    token = _obter_token_admin()
+
     try:
-        token = _obter_token_admin()
+        db.query(Notificacao).filter(Notificacao.usuario_id == local.id).update(
+            {Notificacao.usuario_id: None},
+            synchronize_session=False,
+        )
+        db.delete(local)
+        db.flush()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Erro ao remover usuário no banco de dados.") from exc
+
+    # Só remove no Keycloak depois que o banco aceitou a remoção local.
+    # Se o Keycloak falhar, o rollback preserva o registro local.
+    try:
         resp = requests.delete(
             f"{KEYCLOAK_URL}/admin/realms/{REALM_NAME}/users/{item_id}",
             headers={"Authorization": f"Bearer {token}"},
@@ -353,10 +384,11 @@ def remover(db: Session, item_id: str) -> bool:
                 detail=f"Falha ao remover usuário do Keycloak (status {resp.status_code}).",
             )
     except HTTPException:
+        db.rollback()
         raise
     except Exception as exc:
+        db.rollback()
         raise HTTPException(status_code=502, detail="Não foi possível contactar o Keycloak.") from exc
 
-    db.delete(local)
     db.commit()
     return True
