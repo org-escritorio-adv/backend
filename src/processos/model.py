@@ -26,3 +26,17 @@ class Processo(Base):
     )
     tarefas = relationship("Tarefa", back_populates="processo", cascade="all, delete-orphan")
     prazos = relationship("Prazo", back_populates="processo", cascade="all, delete-orphan")
+    documentos = relationship("DocumentoProcesso", back_populates="processo", cascade="all, delete-orphan")
+
+
+class DocumentoProcesso(Base):
+    __tablename__ = "documentos_processo"
+
+    id = Column(Integer, primary_key=True, index=True)
+    processo_id = Column(Integer, ForeignKey("processos.id"), nullable=False, index=True)
+    nome_original = Column(String, nullable=False)
+    nome_salvo = Column(String, nullable=False)
+    tamanho = Column(Integer)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    processo = relationship("Processo", back_populates="documentos")

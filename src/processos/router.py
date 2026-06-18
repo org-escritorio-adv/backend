@@ -1,17 +1,36 @@
+import base64
 import io
 import csv
+import os
+import uuid
+from datetime import datetime
 from fpdf import FPDF
 from fastapi import Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.keycloak_auth import require_roles, require_roles_or_permission
 from src.processos import repository
-from src.processos.schema import Processo, ProcessoCreate, ProcessoUpdate
+from src.processos.schema import Processo, ProcessoCreate, ProcessoUpdate, DocumentoProcessoSchema
+from src.processos.model import DocumentoProcesso
 from src.shared.crud_factory import create_crud_router
 
 from fastapi import APIRouter
+
+DOCS_UPLOAD_DIR = "uploads/documentos_processo"
+if os.getenv("VERCEL") == "1":
+    DOCS_UPLOAD_DIR = "/tmp/escritorio-adv/documentos_processo"
+DOCS_UPLOAD_DIR = os.getenv("DOCUMENTOS_UPLOAD_DIR", DOCS_UPLOAD_DIR)
+
+EXTENSOES_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png", ".docx", ".doc", ".xlsx", ".xls"}
+TAMANHO_MAXIMO = 20 * 1024 * 1024  # 20 MB
+
+
+class DocumentoUploadRequest(BaseModel):
+    arquivo_base64: str
+    arquivo_nome: str
 
 router = APIRouter(prefix="/processos", tags=["processos"])
 
@@ -109,6 +128,95 @@ def exportar_pdf(processo_id: int, db: Session = Depends(get_db)):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=processo_{processo.numero_cnj}.pdf"}
     )
+
+@router.get(
+    "/{processo_id}/documentos",
+    response_model=list[DocumentoProcessoSchema],
+    dependencies=[Depends(require_roles("admin", "advogado", "estagiario"))],
+)
+def listar_documentos(processo_id: int, db: Session = Depends(get_db)):
+    docs = db.query(DocumentoProcesso).filter(DocumentoProcesso.processo_id == processo_id).all()
+    return docs
+
+
+@router.post(
+    "/{processo_id}/documentos",
+    response_model=DocumentoProcessoSchema,
+    dependencies=[Depends(require_roles("admin", "advogado"))],
+)
+def upload_documento(processo_id: int, body: DocumentoUploadRequest, db: Session = Depends(get_db)):
+    processo = repository.buscar_por_id(db, processo_id)
+    if not processo:
+        raise HTTPException(status_code=404, detail="Processo não encontrado")
+
+    ext = os.path.splitext(body.arquivo_nome)[1].lower()
+    if ext not in EXTENSOES_PERMITIDAS:
+        raise HTTPException(status_code=422, detail=f"Formato não permitido. Use: {', '.join(EXTENSOES_PERMITIDAS)}")
+
+    try:
+        conteudo = base64.b64decode(body.arquivo_base64)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Arquivo base64 inválido.")
+
+    if len(conteudo) > TAMANHO_MAXIMO:
+        raise HTTPException(status_code=422, detail="Arquivo excede 20 MB.")
+
+    os.makedirs(DOCS_UPLOAD_DIR, exist_ok=True)
+    nome_salvo = f"{processo_id}_{uuid.uuid4().hex}{ext}"
+    with open(os.path.join(DOCS_UPLOAD_DIR, nome_salvo), "wb") as f:
+        f.write(conteudo)
+
+    doc = DocumentoProcesso(
+        processo_id=processo_id,
+        nome_original=body.arquivo_nome,
+        nome_salvo=nome_salvo,
+        tamanho=len(conteudo),
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+@router.get(
+    "/{processo_id}/documentos/{doc_id}/arquivo",
+    dependencies=[Depends(require_roles("admin", "advogado", "estagiario"))],
+)
+def baixar_documento(processo_id: int, doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(DocumentoProcesso).filter(
+        DocumentoProcesso.id == doc_id,
+        DocumentoProcesso.processo_id == processo_id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+    caminho = os.path.join(DOCS_UPLOAD_DIR, doc.nome_salvo)
+    if not os.path.exists(caminho):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
+
+    return FileResponse(caminho, filename=doc.nome_original)
+
+
+@router.delete(
+    "/{processo_id}/documentos/{doc_id}",
+    dependencies=[Depends(require_roles("admin", "advogado"))],
+    status_code=204,
+)
+def remover_documento(processo_id: int, doc_id: int, db: Session = Depends(get_db)):
+    doc = db.query(DocumentoProcesso).filter(
+        DocumentoProcesso.id == doc_id,
+        DocumentoProcesso.processo_id == processo_id
+    ).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+    caminho = os.path.join(DOCS_UPLOAD_DIR, doc.nome_salvo)
+    if os.path.exists(caminho):
+        os.remove(caminho)
+
+    db.delete(doc)
+    db.commit()
+
 
 router.include_router(crud_router)
 
