@@ -17,5 +17,6 @@ class Cliente(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     autorizacao_busca = Column(Boolean, default=False)
     data_autorizacao_busca = Column(DateTime, nullable=True)
+    termo_autorizacao_arquivo = Column(String, nullable=True)
 
     processos = relationship("Processo", back_populates="cliente")

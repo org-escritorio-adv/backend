@@ -14,6 +14,7 @@ from src.apiJud.schema import (
     DataJudProcesso,
     DataJudSincronizarResponse,
 )
+from src.clientes import repository as clientes_repository
 from src.movimentacoes.model import Movimentacao
 from src.processos.model import Processo
 
@@ -54,7 +55,15 @@ def consultar_processo(body: DataJudConsultaRequest):
 
 @router.post("/importar", response_model=DataJudImportarResponse, dependencies=[Depends(require_roles("admin", "advogado"))])
 def importar_processo(body: DataJudImportarRequest, db: Session = Depends(get_db)):
-    """Consulta DataJud e persiste o processo + movimentações no banco."""
+    if body.cliente_id is not None:
+        cliente = clientes_repository.buscar_por_id(db, body.cliente_id)
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado.")
+        if not cliente.autorizacao_busca:
+            raise HTTPException(
+                status_code=403,
+                detail="Autorização de busca por CPF/CNPJ não registrada para este cliente. Registre o termo de autorização antes de importar processos.",
+            )
     try:
         raw = repository.consultar_por_numero(body.numero_processo, body.tribunal)
     except ValueError as e:
@@ -100,8 +109,17 @@ def buscar_processos(
     cpf: str | None = Query(default=None, description="CPF de uma das partes (atenção: campo raramente preenchido no DataJud — resultado pode ser vazio)"),
     oab: str | None = Query(default=None, description="Número OAB do advogado (atenção: campo raramente preenchido no DataJud — resultado pode ser vazio)"),
     size: int = Query(default=10, ge=1, le=100),
+    db: Session = Depends(get_db),
 ):
     """Busca processos por número, CPF ou OAB. Informe ao menos um filtro."""
+    if cpf is not None:
+        cpf_digits = cpf.replace(".", "").replace("-", "").replace("/", "")
+        cliente = clientes_repository.buscar_por_cpf(db, cpf_digits)
+        if not cliente or not cliente.autorizacao_busca:
+            raise HTTPException(
+                status_code=403,
+                detail="Autorização de busca por CPF/CNPJ não registrada para este cliente. Registre o termo de autorização antes de realizar a consulta.",
+            )
     try:
         raw = repository.buscar_por_filtro(tribunal, numero_processo, cpf, oab, size)
     except ValueError as e:
