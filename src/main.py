@@ -18,11 +18,8 @@ from src.usuarios.router import router as usuarios_router
 from src.usuarios import repository as usuarios_repository
 from src.auth.router import router as auth_router
 from src.notificacoes.router import router as notificacoes_router
-<<<<<<< Updated upstream
 from src.advogados.router import router as advogados_router
-=======
 from src.dashboard.router import router as dashboard_router
->>>>>>> Stashed changes
 from src.scheduler import iniciar_scheduler
 
 
@@ -64,11 +61,8 @@ app.include_router(datajud_router)
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(notificacoes_router)
-<<<<<<< Updated upstream
 app.include_router(advogados_router)
-=======
 app.include_router(dashboard_router)
->>>>>>> Stashed changes
 
 
 @app.on_event("startup")
