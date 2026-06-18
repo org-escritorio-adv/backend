@@ -3,7 +3,7 @@ Service central de notificações.
 
 Qualquer parte do sistema que precise avisar um usuário deve chamar
 `criar_notificacao(...)` daqui — ela grava a notificação no banco (para aparecer
-no sininho do topo) e, opcionalmente, dispara um e-mail via Resend.
+no sininho do topo) e, opcionalmente, dispara um e-mail via Brevo.
 
 Mantém o mesmo padrão de envio de e-mail já usado em src/auth/router.py.
 """
@@ -11,7 +11,7 @@ Mantém o mesmo padrão de envio de e-mail já usado em src/auth/router.py.
 import requests
 from sqlalchemy.orm import Session
 
-from src.config import RESEND_API_KEY, RESEND_FROM_EMAIL
+from src.config import BREVO_API_KEY, BREVO_FROM_EMAIL, BREVO_FROM_NAME
 from src.notificacoes.model import Notificacao
 from src.usuarios.model import Usuario
 
@@ -32,21 +32,22 @@ def _montar_html_email(titulo: str, mensagem: str) -> str:
 
 
 def _enviar_email(destinatario: str, titulo: str, mensagem: str) -> None:
-    """Envia um e-mail via Resend. Falhas de e-mail nunca derrubam a operação."""
-    if not RESEND_API_KEY or not destinatario:
+    """Envia um e-mail via Brevo. Falhas de e-mail nunca derrubam a operação."""
+    if not BREVO_API_KEY or not destinatario:
         return
     try:
         requests.post(
-            "https://api.resend.com/emails",
+            "https://api.brevo.com/v3/smtp/email",
             headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "api-key": BREVO_API_KEY,
                 "Content-Type": "application/json",
+                "accept": "application/json",
             },
             json={
-                "from": RESEND_FROM_EMAIL,
-                "to": [destinatario],
+                "sender": {"email": BREVO_FROM_EMAIL, "name": BREVO_FROM_NAME},
+                "to": [{"email": destinatario}],
                 "subject": titulo,
-                "html": _montar_html_email(titulo, mensagem),
+                "htmlContent": _montar_html_email(titulo, mensagem),
             },
             timeout=10,
         )
