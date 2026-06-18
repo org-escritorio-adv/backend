@@ -15,10 +15,16 @@ from src.keycloak_auth import require_roles
 from src.shared.crud_factory import create_crud_router
 
 UPLOAD_DIR = "uploads/autorizacoes"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+if os.getenv("VERCEL") == "1":
+    UPLOAD_DIR = "/tmp/escritorio-adv/autorizacoes"
+UPLOAD_DIR = os.getenv("AUTORIZACOES_UPLOAD_DIR", UPLOAD_DIR)
 
 EXTENSOES_PERMITIDAS = {".pdf", ".jpg", ".jpeg", ".png"}
 TAMANHO_MAXIMO = 10 * 1024 * 1024  # 10 MB
+
+
+def _ensure_upload_dir() -> None:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 class AutorizacaoRequest(BaseModel):
@@ -69,6 +75,8 @@ def registrar_autorizacao(
         )
 
     if body.arquivo_base64:
+        _ensure_upload_dir()
+
         nome = body.arquivo_nome or "termo.pdf"
         ext = os.path.splitext(nome)[1].lower()
         if ext not in EXTENSOES_PERMITIDAS:

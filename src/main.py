@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 import src.models  # — registra todos os models no Base.metadata
-from src.database import Base, SessionLocal, engine
+from src.database import SessionLocal
 from src.clientes.router import router as clientes_router
 from src.apiJud.router import router as datajud_router
 from src.leads.router import router as leads_router
@@ -25,12 +25,6 @@ from src.scheduler import iniciar_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    with engine.connect() as conn:
-        conn.execute(text(
-            "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS termo_autorizacao_arquivo VARCHAR"
-        ))
-        conn.commit()
-
     db = SessionLocal()
     try:
         usuarios_repository.sincronizar_do_keycloak(db)
@@ -67,6 +61,8 @@ app.include_router(dashboard_router)
 
 @app.on_event("startup")
 def _iniciar_tarefas_agendadas():
+    if os.getenv("VERCEL") == "1":
+        return
     iniciar_scheduler()
 
 
